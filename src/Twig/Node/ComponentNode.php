@@ -70,8 +70,9 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
         $this->createTerrificContext($compiler);
 
         $this->addGetTemplate($compiler);
+        
         $compiler
-            ->raw('->display($tContext);')
+            ->raw('->display(array_merge($tContext, array("class_name" => "'. $this->getNode('view')->getAttribute('value') .'", "name" => "'. $this->getNode('view')->getAttribute('value') .'")));')
             ->raw("\n\n");
 
         $compiler->addDebugInfo($this->getNode('view'));
@@ -84,7 +85,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
     {
         $compiler
             ->addIndentation()
-            ->raw('$tContext = $context;')
+            ->raw('$tContext = array_merge($context, array("class_name" => "'. $this->getNode('view')->getAttribute('value') .'", "name" => "'. $this->getNode('view')->getAttribute('value') .'"));')
             ->raw("\n");
 
         $this->ctxProvider->compile(
