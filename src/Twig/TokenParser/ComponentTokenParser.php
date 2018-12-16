@@ -91,6 +91,6 @@ final class ComponentTokenParser extends Twig_TokenParser
      */
     public function getTag()
     {
-        return 'component';
+        return 'view';
     }
 }

@@ -49,8 +49,9 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
         $lineno,
         $tag = null)
     {
+
         parent::__construct(
-            ['component' => $component, 'data' => $data],
+            ['view' => $component, 'data' => $data],
             ['only' => (bool)$only],
             $lineno,
             $tag
@@ -73,7 +74,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
             ->raw('->display($tContext);')
             ->raw("\n\n");
 
-        $compiler->addDebugInfo($this->getNode('component'));
+        $compiler->addDebugInfo($this->getNode('view'));
     }
 
     /**
@@ -88,7 +89,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
 
         $this->ctxProvider->compile(
             $compiler,
-            $this->getNode('component'),
+            $this->getNode('view'),
             $this->getNode('data'),
             $this->getAttribute('only')
         );
@@ -102,7 +103,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
     {
         $compiler
             ->write('$this->loadTemplate(')
-            ->subcompile($this->getNode('component'))
+            ->subcompile($this->getNode('view'))
             ->raw(', ')
             ->repr($compiler->getFilename())
             ->raw(', ')
