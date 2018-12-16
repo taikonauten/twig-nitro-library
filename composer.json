@@ -1,9 +1,9 @@
 {
-    "name": "namics/twig-nitro-library",
+    "name": "taikonauten/twig-nitro-library",
     "description": "Extension to embrace the Terrific frontend methodology in Twig. Currently it adds a custom component tag to Twig which mimics Nitro's handlebars helper.",
     "type": "library",
-    "keywords": ["terrific", "nitro", "twig", "integration", "namics"],
-    "homepage": "https://github.com/namics/twig-nitro-library",
+    "keywords": ["terrific", "nitro", "twig", "integration", "taikonauten"],
+    "homepage": "https://github.com/taikonauten/twig-nitro-library",
     "license": "MIT",
     "authors": [
         {
