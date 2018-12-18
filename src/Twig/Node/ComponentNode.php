@@ -96,6 +96,9 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
 
 		$classList = ['classes' => [], 'modifier' => []];
 
+    $rawClassesArray = [];
+    $rawModifierArray = [];
+
     if ($data === NULL) {
 
       return $classList;
