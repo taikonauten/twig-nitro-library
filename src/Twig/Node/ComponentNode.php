@@ -80,7 +80,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
         $this->classList = $this->buildClassNameArray($this->nodeName, $this->getNode('data'));
 
         $compiler
-            ->raw('->display(array_merge($tContext, array("class_name" => "'. implode(' ', array_merge($this->classList['classes'], $this->classList['modifier'])) .'", "name" => "' . $this->nodeName .'", "classes" => "[' . implode(',',$this->classList['classes']) .']", "modifier" => "[' . implode(',',$this->classList['modifier']) .']")));')
+            ->raw('->display(array_merge($tContext, array("class_name" => "'. implode(' ', array_merge($this->classList['classes'], $this->classList['modifiers'])) .'", "name" => "' . $this->nodeName .'", "classes" => "[' . implode(',',$this->classList['classes']) .']", "modifiers" => "[' . implode(',',$this->classList['modifier']) .']")));')
             ->raw("\n\n");
 
 
@@ -94,7 +94,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
 	protected function buildClassNameArray(string $name, $data)
 	{
 
-		$classList = ['classes' => [], 'modifier' => []];
+		$classList = ['classes' => [], 'modifiers' => []];
 
     $rawClassesArray = [];
     $rawModifierArray = [];
@@ -121,7 +121,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
 				}
 			}
 
-			if ( $pair['key']->getAttribute( 'value' ) === 'modifier' ) {
+			if ( $pair['key']->getAttribute( 'value' ) === 'modifiers' ) {
 
 				if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
 
@@ -140,7 +140,7 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
 		}
 
 		$classList['classes'] = $rawClassesArray;
-		$classList['modifier'] = $rawModifierArray;
+		$classList['modifiers'] = $rawModifierArray;
 
 		return $classList;
 	}
