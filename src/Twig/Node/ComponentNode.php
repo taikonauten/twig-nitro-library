@@ -107,52 +107,43 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
         }
 
         foreach ($data->getKeyValuePairs() as $pair) {
+    			if ($pair['key']->getAttribute('value') === 'classes') {
 
+            if ($pair['value'] instanceof Twig_Node_Expression_Constant) {
 
-            if ( $pair['key']->getAttribute( 'value' ) === 'classes' ) {
+            	$rawClassesArray[] = $pair['value']->getAttribute('value');
+    				}
 
-                if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
+    				elseif ($pair['value'] instanceof Twig_Node_Expression_Binary_Concat) {
 
-                    if($pair['value']->hasAttribute('value')) {
+              var_dump($pair['value']); die;
 
-                        $rawClassesArray[] = $pair['value']->getAttribute( 'value' );
-                    }
+              foreach ($pair['value']->getKeyValuePairs() as $constant) {
+    						$rawClassesArray[] = $constant['value']->getAttribute('value');
+    					}
 
-                } else {
+    				}
+    				else {
 
-                    foreach ( $pair['value']->getKeyValuePairs() as $constant ) {
-
-                        if($constant['value']->hasAttribute('value')) {
-
-                            $rawClassesArray[] = $constant['value']->getAttribute( 'value' );
-                        }
-                    }
-                }
+              var_dump($pair['value']); die;
             }
+    			}
 
-            if ( $pair['key']->getAttribute( 'value' ) === 'modifiers' ) {
+    			if ($pair['key']->getAttribute( 'value' ) === 'modifier') {
 
-                if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
+    				if ($pair['value'] instanceof Twig_Node_Expression_Constant) {
 
-                    if($pair['value']->hasAttribute( 'value' )) {
+              $rawModifierArray[] = $name . '--' . $pair['value']->getAttribute('value');
+    				}
+    				else {
 
-                        $rawModifierArray[] = $name . '--' . $pair['value']->getAttribute( 'value' );
-                    }
+    					foreach ($pair['value']->getKeyValuePairs() as $constant) {
 
-                } else {
-
-                    foreach ( $pair['value']->getKeyValuePairs() as $constant ) {
-
-                        if($constant['value']->hasAttribute('value')) {
-
-                            $rawModifierArray[] = $name . '--' . $constant['value']->getAttribute( 'value' );
-                        }
-                    }
-                }
-
-
-            }
-        }
+              	$rawModifierArray[] = $name . '--' . $constant['value']->getAttribute( 'value' );
+    					}
+    				}
+    			}
+    		}
 
         $classList['classes'] = $rawClassesArray;
         $classList['modifiers'] = $rawModifierArray;
