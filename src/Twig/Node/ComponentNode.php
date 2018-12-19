@@ -32,9 +32,9 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
      */
     private $ctxProvider;
 
-		private $classList;
+    private $classList;
 
-		private $nodeName;
+    private $nodeName;
 
     /**
      * ComponentNode constructor.
@@ -79,71 +79,86 @@ final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
 
         $this->classList = $this->buildClassNameArray($this->nodeName, $this->getNode('data'));
 
+        $class_name = array_merge([$this->nodeName], $this->classList['classes'], $this->classList['modifiers']);
+
         $compiler
-            ->raw('->display(array_merge($tContext, array("class_name" => "'. implode(' ', array_merge($this->classList['classes'], $this->classList['modifiers'])) .'", "name" => "' . $this->nodeName .'", "classes" => "[' . implode(',',$this->classList['classes']) .']", "modifiers" => "[' . implode(',',$this->classList['modifier']) .']")));')
+            ->raw('->display(array_merge($tContext, array("name" => "' . $this->nodeName .'", "class_name" => "'. implode(' ', $class_name) .'", "classes" => "[' . implode(',',$this->classList['classes']) .']", "modifiers" => "[' . implode(',',$this->classList['modifiers']) .']")));')
             ->raw("\n\n");
 
+        $compiler->addDebugInfo($this->getNode('view'));
 
-	    $compiler->addDebugInfo($this->getNode('view'));
     }
 
-	/**
-	 * Builds class_name as array and returns it
-	 * TODO: refactor
-	 */
-	protected function buildClassNameArray(string $name, $data)
-	{
+    /**
+     * Builds class_name as array and returns it
+     * TODO: refactor
+     */
+    protected function buildClassNameArray(string $name, $data)
+    {
 
-		$classList = ['classes' => [], 'modifiers' => []];
+        $classList = ['classes' => [], 'modifiers' => []];
 
-    $rawClassesArray = [];
-    $rawModifierArray = [];
+        $rawClassesArray = [];
+        $rawModifierArray = [];
 
-    if ($data === NULL) {
+        if ($data === NULL) {
 
-      return $classList;
+            return $classList;
+        }
+
+        foreach ($data->getKeyValuePairs() as $pair) {
+
+
+            if ( $pair['key']->getAttribute( 'value' ) === 'classes' ) {
+
+                if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
+
+                    if($pair['value']->hasAttribute('value')) {
+
+                        $rawClassesArray[] = $pair['value']->getAttribute( 'value' );
+                    }
+
+                } else {
+
+                    foreach ( $pair['value']->getKeyValuePairs() as $constant ) {
+
+                        if($constant['value']->hasAttribute('value')) {
+
+                            $rawClassesArray[] = $constant['value']->getAttribute( 'value' );
+                        }
+                    }
+                }
+            }
+
+            if ( $pair['key']->getAttribute( 'value' ) === 'modifiers' ) {
+
+                if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
+
+                    if($pair['value']->hasAttribute( 'value' )) {
+
+                        $rawModifierArray[] = $name . '--' . $pair['value']->getAttribute( 'value' );
+                    }
+
+                } else {
+
+                    foreach ( $pair['value']->getKeyValuePairs() as $constant ) {
+
+                        if($constant['value']->hasAttribute('value')) {
+
+                            $rawModifierArray[] = $name . '--' . $constant['value']->getAttribute( 'value' );
+                        }
+                    }
+                }
+
+
+            }
+        }
+
+        $classList['classes'] = $rawClassesArray;
+        $classList['modifiers'] = $rawModifierArray;
+
+        return $classList;
     }
-
-		foreach ($data->getKeyValuePairs() as $pair) {
-
-			if ( $pair['key']->getAttribute( 'value' ) === 'classes' ) {
-
-				if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
-
-					$rawClassesArray[] = $pair['value']->getAttribute( 'value' );
-
-				} else {
-
-					foreach ( $pair['value']->getKeyValuePairs() as $constant ) {
-
-						$rawClassesArray[] = $constant['value']->getAttribute( 'value' );
-					}
-				}
-			}
-
-			if ( $pair['key']->getAttribute( 'value' ) === 'modifiers' ) {
-
-				if ( is_a( $pair['value'], 'Twig_Node_Expression_Constant' ) ) {
-
-					$rawModifierArray[] = $name . '--' . $pair['value']->getAttribute( 'value' );
-
-				} else {
-
-					foreach ( $pair['value']->getKeyValuePairs() as $constant ) {
-
-						$rawModifierArray[] = $name . '--' . $constant['value']->getAttribute( 'value' );
-					}
-				}
-
-
-			}
-		}
-
-		$classList['classes'] = $rawClassesArray;
-		$classList['modifiers'] = $rawModifierArray;
-
-		return $classList;
-	}
 
     /**
      * @param Twig_Compiler $compiler
