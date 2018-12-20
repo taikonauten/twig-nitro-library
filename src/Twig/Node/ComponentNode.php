@@ -1,5 +1,7 @@
 <?php
 
+namespace Deniaz\Terrific\Twig\Node;
+
 /**
  * This file is part of the Terrific Twig package.
  *
@@ -9,179 +11,280 @@
  * file that was distributed with this source code.
  */
 
-namespace Deniaz\Terrific\Twig\Node;
-
 use Deniaz\Terrific\Provider\ContextProviderInterface;
-use \Twig_Compiler;
-use \Twig_Node;
-use \Twig_NodeOutputInterface;
-use \Twig_Node_Expression;
-use \Twig_Node_Expression_Array;
-use \Twig_Node_Expression_Constant;
+use Twig_Compiler;
+use Twig_Node;
+use Twig_NodeOutputInterface;
+use Twig_Node_Expression;
 
 /**
  * ComponentNode represents a component node.
  *
- * Class ComponentNode
  * @package Deniaz\Terrific\Twig\Node
  */
-final class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface
-{
-    /**
-     * @var ContextProviderInterface Context Variable Provider
-     */
-    private $ctxProvider;
+class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
 
-    private $classList;
+  /**
+   * How the node is called.
+   *
+   * E.g. 'view'
+   * @code
+   * {% view 'exampleView' {} %}
+   * @endcode
+   */
+  const NODE_TAG = 'view';
 
-    private $nodeName;
+  /**
+   * The classes array key of the classes data that is passed to the node.
+   */
+  const CLASSES_KEY = 'classes';
 
-    /**
-     * ComponentNode constructor.
-     * @param Twig_Node_Expression $component Expression representing the Component's Identifier.
-     * @param ContextProviderInterface $ctxProvider Context Provider.
-     * @param Twig_Node_Expression|null $data Expression representing the additional data.
-     * @param bool $only Whether a new Child-Context should be created.
-     * @param int $lineno Line Number.
-     * @param string $tag Tag name associated with the node.
-     */
-    public function __construct(
-        Twig_Node_Expression $component,
-        ContextProviderInterface $ctxProvider,
-        Twig_Node_Expression $data = null,
-        $only = false,
-        $lineno,
-        $tag = null)
-    {
+  /**
+   * The modifies array key of the modifies data that is passed to the node.
+   */
+  const MODIFIERS_KEY = 'modifiers';
 
-        parent::__construct(
-            ['view' => $component, 'data' => $data],
-            ['only' => (bool)$only],
-            $lineno,
-            $tag
-        );
+  /**
+   * Context Variable Provider.
+   *
+   * @var \Deniaz\Terrific\Provider\ContextProviderInterface
+   */
+  private $ctxProvider;
 
-        $this->ctxProvider = $ctxProvider;
-    }
+  /**
+   * ComponentNode constructor.
+   *
+   * @param \Twig_Node_Expression $component
+   *   Expression representing the Component's Identifier.
+   * @param \Deniaz\Terrific\Provider\ContextProviderInterface $ctxProvider
+   *   Context Provider.
+   * @param \Twig_Node_Expression|null $data
+   *   Expression representing the additional data.
+   * @param bool $only
+   *   Whether a new Child-Context should be created.
+   * @param int $lineno
+   *   Line Number.
+   * @param string $tag
+   *   Tag name associated with the node.
+   */
+  public function __construct(
+    Twig_Node_Expression $component,
+    ContextProviderInterface $ctxProvider,
+    Twig_Node_Expression $data = NULL,
+    $only = FALSE,
+    $lineno = 0,
+    $tag = NULL) {
 
-    /**
-     * @param Twig_Compiler $compiler
-     */
-    public function compile(Twig_Compiler $compiler)
-    {
-        $compiler->addDebugInfo($this);
+    parent::__construct(
+      [self::NODE_TAG => $component, 'data' => $data],
+      ['only' => (bool) $only],
+      $lineno,
+      $tag
+    );
 
-        $this->createTerrificContext($compiler);
+    $this->ctxProvider = $ctxProvider;
+  }
 
-        $this->addGetTemplate($compiler);
+  /**
+   * Compile the node to PHP markup.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   */
+  public function compile(Twig_Compiler $compiler) {
+    $this->nodeName = $this->getNode(self::NODE_TAG)->getAttribute('value');
+    $this->nodeData = $this->getNode('data');
 
-        $this->nodeName = $this->getNode('view')->getAttribute('value');
+    $compiler->addDebugInfo($this);
 
-        $this->classList = $this->buildClassNameArray($this->nodeName, $this->getNode('data'));
+    $this->createTerrificContext($compiler);
+    $this->addGetTemplate($compiler);
 
-        $class_name = array_merge([$this->nodeName], $this->classList['classes'], $this->classList['modifiers']);
+    $compiler
+      ->raw('->display(array_merge($tContext, [');
+    $this->compileNameArrayKey($compiler);
+    $this->compileClassNameArrayKey($compiler);
+    $this->compileClassesArrayKey($compiler);
+    $this->compileModifiersArrayKey($compiler);
+    $compiler->raw(']));');
 
-        $compiler
-            ->raw('->display(array_merge($tContext, array("name" => "' . $this->nodeName .'", "class_name" => "'. implode(' ', $class_name) .'", "classes" => "[' . implode(',',$this->classList['classes']) .']", "modifiers" => "[' . implode(',',$this->classList['modifiers']) .']")));')
-            ->raw("\n\n");
+    $compiler->addDebugInfo($this->getNode(self::NODE_TAG));
+  }
 
-        $compiler->addDebugInfo($this->getNode('view'));
+  /**
+   * Adds a "name" array key to the compiled output.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   *
+   * @return \Twig_Compiler
+   *   The Twig compiler.
+   */
+  private function compileNameArrayKey(Twig_Compiler $compiler) {
+    $compiler->raw('"name" => "' . $this->nodeName . '",');
 
-    }
+    return $compiler;
+  }
 
-    /**
-     * Builds class_name as array and returns it
-     * TODO: refactor
-     */
-    protected function buildClassNameArray(string $name, $data)
-    {
+  /**
+   * Adds a "class_name" array key to the compiled output.
+   *
+   * Contains a string that can be used in a CSS class attribute
+   * with the Node name, all classes and modifiers.
+   * Modifiers are prefixed with "$nodeName--".
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   *
+   * @return \Twig_Compiler
+   *   The Twig compiler.
+   */
+  private function compileClassNameArrayKey(Twig_Compiler $compiler) {
+    $compiler->raw('"class_name" => "' . $this->nodeName . '"." "');
+    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::CLASSES_KEY, ' ', NULL, TRUE);
+    $compiler->raw('." "');
+    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::MODIFIERS_KEY, ' ', $this->nodeName . '--', TRUE);
+    $compiler->raw(',');
 
-        $classList = ['classes' => [], 'modifiers' => []];
+    return $compiler;
+  }
 
-        $rawClassesArray = [];
-        $rawModifierArray = [];
+  /**
+   * Adds a CLASSES_KEY array key to the compiled output.
+   *
+   * Contains an array with all "classes" that were passed to the Node.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   *
+   * @return \Twig_Compiler
+   *   The Twig compiler.
+   */
+  private function compileClassesArrayKey(Twig_Compiler $compiler) {
+    $compiler->raw('"' . self::CLASSES_KEY . '" => [');
+    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::CLASSES_KEY, ',');
+    $compiler->raw('],');
 
-        if ($data === NULL) {
+    return $compiler;
+  }
 
-            return $classList;
+  /**
+   * Adds a MODIFIERS_KEY array key to the compiled output.
+   *
+   * Contains an array with all "modifiers" that were passed to the Node.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   *
+   * @return \Twig_Compiler
+   *   The Twig compiler.
+   */
+  private function compileModifiersArrayKey(Twig_Compiler $compiler) {
+    $compiler->raw('"' . self::MODIFIERS_KEY . '" => [');
+    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::MODIFIERS_KEY, ',', $this->nodeName . '--');
+    $compiler->raw(']');
+
+    return $compiler;
+  }
+
+  /**
+   * Compiles data elements that are inside given array key.
+   *
+   * Glues compiled items together with given $glue.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   * @param array|null $data
+   *   The data passed to the Node.
+   *   NULL if none is given.
+   * @param string $dataKey
+   *   Array key by which data to compile should be selected.
+   * @param string $glue
+   *   What to use as glue between compiled items.
+   * @param string|null $compileStringPrefix
+   *   If given, this string is prepended to each compiled item.
+   * @param bool|null $concatToPrevious
+   *   Whether or not, a "." should be added before the first compiled item.
+   *
+   * @return \Twig_Compiler
+   *   The Twig compiler.
+   */
+  private function compileAndImplodeDataElements(
+    Twig_Compiler $compiler,
+    $data,
+    string $dataKey,
+    string $glue,
+    string $compileStringPrefix = NULL,
+    bool $concatToPrevious = NULL
+  ) {
+    if ($data !== NULL) {
+      $dataPairIndex = 0;
+      $keyValuePairs = [];
+
+      foreach ($data->getKeyValuePairs() as $pair) {
+        if ($pair['key']->getAttribute('value') === $dataKey) {
+          $keyValuePairs[] = $pair;
+        }
+      }
+
+      if (!empty($keyValuePairs) && $concatToPrevious) {
+        $compiler->raw('.');
+      }
+
+      foreach ($keyValuePairs as $pair) {
+        if ($compileStringPrefix !== NULL) {
+          $compiler->raw('"' . $compileStringPrefix . '".');
+        }
+        $compiler->subcompile($pair['value']);
+
+        // Is not last item.
+        if ($dataPairIndex !== count($data->getKeyValuePairs()) - 1) {
+          $compiler->raw($glue);
         }
 
-        foreach ($data->getKeyValuePairs() as $pair) {
-    			if ($pair['key']->getAttribute('value') === 'classes') {
-
-            if ($pair['value'] instanceof Twig_Node_Expression_Constant) {
-
-            	$rawClassesArray[] = $pair['value']->getAttribute('value');
-    				}
-
-    				elseif ($pair['value'] instanceof Twig_Node_Expression_Binary_Concat) {
-
-              var_dump($pair['value']); die;
-
-              foreach ($pair['value']->getKeyValuePairs() as $constant) {
-    						$rawClassesArray[] = $constant['value']->getAttribute('value');
-    					}
-
-    				}
-    				else {
-
-              var_dump($pair['value']); die;
-            }
-    			}
-
-    			if ($pair['key']->getAttribute( 'value' ) === 'modifier') {
-
-    				if ($pair['value'] instanceof Twig_Node_Expression_Constant) {
-
-              $rawModifierArray[] = $name . '--' . $pair['value']->getAttribute('value');
-    				}
-    				else {
-
-    					foreach ($pair['value']->getKeyValuePairs() as $constant) {
-
-              	$rawModifierArray[] = $name . '--' . $constant['value']->getAttribute( 'value' );
-    					}
-    				}
-    			}
-    		}
-
-        $classList['classes'] = $rawClassesArray;
-        $classList['modifiers'] = $rawModifierArray;
-
-        return $classList;
+        $dataPairIndex++;
+      }
     }
 
-    /**
-     * @param Twig_Compiler $compiler
-     */
-    protected function createTerrificContext(Twig_Compiler $compiler)
-    {
-        $compiler
-            ->addIndentation()
-            ->raw('$tContext = array_merge($context, array("class_name" => "'. $this->getNode('view')->getAttribute('value') .'", "name" => "'. $this->getNode('view')->getAttribute('value') .'"));')
-            ->raw("\n");
+    return $compiler;
+  }
 
-        $this->ctxProvider->compile(
-            $compiler,
-            $this->getNode('view'),
-            $this->getNode('data'),
-            $this->getAttribute('only')
-        );
-    }
+  /**
+   * Adds the Terrific context.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   */
+  private function createTerrificContext(Twig_Compiler $compiler) {
+    $compiler
+      ->addIndentation()
+      ->raw('$tContext = $context;');
 
-    /**
-     * Adds the first expression (Component Identifier) and compiles the template loading logic.
-     * @param Twig_Compiler $compiler
-     */
-    protected function addGetTemplate(Twig_Compiler $compiler)
-    {
-        $compiler
-            ->write('$this->loadTemplate(')
-            ->subcompile($this->getNode('view'))
-            ->raw(', ')
-            ->repr($compiler->getFilename())
-            ->raw(', ')
-            ->repr($this->getLine())
-            ->raw(')');
-    }
+    $this->ctxProvider->compile(
+      $compiler,
+      $this->getNode(self::NODE_TAG),
+      $this->getNode('data'),
+      $this->getAttribute('only')
+    );
+  }
+
+  /**
+   * Adds the first expression (Component Tag).
+   *
+   * And compiles the template loading logic.
+   *
+   * @param \Twig_Compiler $compiler
+   *   The Twig compiler.
+   */
+  private function addGetTemplate(Twig_Compiler $compiler) {
+    $compiler
+      ->write('$this->loadTemplate(')
+      ->subcompile($this->getNode(self::NODE_TAG))
+      ->raw(', ')
+      ->repr($compiler->getFilename())
+      ->raw(', ')
+      ->repr($this->getLine())
+      ->raw(')');
+  }
+
 }
