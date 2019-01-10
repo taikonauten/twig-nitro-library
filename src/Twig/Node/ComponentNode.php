@@ -12,7 +12,6 @@ namespace Deniaz\Terrific\Twig\Node;
  */
 
 use Deniaz\Terrific\Provider\ContextProviderInterface;
-use Twig\Error\Error;
 use Twig_Compiler;
 use Twig_Node;
 use Twig_NodeOutputInterface;
