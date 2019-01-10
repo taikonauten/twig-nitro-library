@@ -16,6 +16,8 @@ use Twig_Compiler;
 use Twig_Node;
 use Twig_NodeOutputInterface;
 use Twig_Node_Expression;
+use Twig_Node_Expression_Array;
+use Twig_Error;
 
 /**
  * ComponentNode represents a component node.
@@ -50,6 +52,20 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
    * @var \Deniaz\Terrific\Provider\ContextProviderInterface
    */
   private $ctxProvider;
+
+  /**
+   * The name of the node that is called.
+   *
+   * @var string
+   */
+  private $nodeName;
+
+  /**
+   * The data passed to the node.
+   *
+   * @var mixed
+   */
+  private $nodeData;
 
   /**
    * ComponentNode constructor.
@@ -92,7 +108,7 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
    *   The Twig compiler.
    */
   public function compile(Twig_Compiler $compiler) {
-    $this->nodeName = $this->getNode(self::NODE_TAG)->getAttribute('value');
+    $this->nodeName = $this->getNodeName();
     $this->nodeData = $this->getNode('data');
 
     $compiler->addDebugInfo($this);
@@ -121,7 +137,7 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
    *   The Twig compiler.
    */
   private function compileNameArrayKey(Twig_Compiler $compiler) {
-    $compiler->raw('"name" => "' . $this->nodeName . '",');
+    $compiler->raw('"name" => "' . $this->getNodeName() . '",');
 
     return $compiler;
   }
@@ -140,10 +156,10 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
    *   The Twig compiler.
    */
   private function compileClassNameArrayKey(Twig_Compiler $compiler) {
-    $compiler->raw('"class_name" => "' . $this->nodeName . '"." "');
+    $compiler->raw('"class_name" => "' . $this->getNodeName() . '"." "');
     $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::CLASSES_KEY, ' ', NULL, TRUE);
     $compiler->raw('." "');
-    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::MODIFIERS_KEY, ' ', $this->nodeName . '--', TRUE);
+    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::MODIFIERS_KEY, ' ', $this->getNodeName() . '--', TRUE);
     $compiler->raw(',');
 
     return $compiler;
@@ -181,7 +197,7 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
    */
   private function compileModifiersArrayKey(Twig_Compiler $compiler) {
     $compiler->raw('"' . self::MODIFIERS_KEY . '" => [');
-    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::MODIFIERS_KEY, ',', $this->nodeName . '--');
+    $this->compileAndImplodeDataElements($compiler, $this->nodeData, self::MODIFIERS_KEY, ',', $this->getNodeName() . '--');
     $compiler->raw(']');
 
     return $compiler;
@@ -221,28 +237,33 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
       $dataPairIndex = 0;
       $keyValuePairs = [];
 
-      foreach ($data->getKeyValuePairs() as $pair) {
-        if ($pair['key']->getAttribute('value') === $dataKey) {
-          $keyValuePairs[] = $pair;
+      if ($data instanceof Twig_Node_Expression_Array) {
+        foreach ($data->getKeyValuePairs() as $pair) {
+          if ($pair['key']->getAttribute('value') === $dataKey) {
+            $keyValuePairs[] = $pair;
+          }
+        }
+
+        if (!empty($keyValuePairs) && $concatToPrevious) {
+          $compiler->raw('.');
+        }
+
+        foreach ($keyValuePairs as $pair) {
+          if ($compileStringPrefix !== NULL) {
+            $compiler->raw('"' . $compileStringPrefix . '".');
+          }
+          $compiler->subcompile($pair['value']);
+
+          // Is not last item.
+          if ($dataPairIndex !== count($data->getKeyValuePairs()) - 1) {
+            $compiler->raw($glue);
+          }
+
+          $dataPairIndex++;
         }
       }
-
-      if (!empty($keyValuePairs) && $concatToPrevious) {
-        $compiler->raw('.');
-      }
-
-      foreach ($keyValuePairs as $pair) {
-        if ($compileStringPrefix !== NULL) {
-          $compiler->raw('"' . $compileStringPrefix . '".');
-        }
-        $compiler->subcompile($pair['value']);
-
-        // Is not last item.
-        if ($dataPairIndex !== count($data->getKeyValuePairs()) - 1) {
-          $compiler->raw($glue);
-        }
-
-        $dataPairIndex++;
+      else {
+        throw new Twig_Error('The arguments passed to node "' . $this->getNodeName() . '" are not valid/supported. A JSON object with key - value mappings must be used.');
       }
     }
 
@@ -285,6 +306,21 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
       ->raw(', ')
       ->repr($this->getLine())
       ->raw(')');
+  }
+
+  /**
+   * Returns the name of the current node.
+   *
+   * @return string
+   *   The node name.
+   */
+  private function getNodeName() {
+    if (isset($this->nodeName)) {
+      return $this->nodeName;
+    }
+    else {
+      return $this->getNode(self::NODE_TAG)->getAttribute('value');
+    }
   }
 
 }
