@@ -240,7 +240,7 @@ class ComponentNode extends Twig_Node implements Twig_NodeOutputInterface {
         $compiler = $this->compileAndImplodeKeyValuePairs($compiler, $keyValuePairs, $glue, $compileStringPrefix, $concatToPrevious);
       }
       else {
-        throw new Twig_Error('The arguments passed to node "' . $this->getNodeName() . '" are not valid/supported. A JSON object with key - value mappings must be used.');
+        throw new Twig_Error('The arguments passed to node "' . $this->nodeName . '" are not valid/supported. A JSON object with key - value mappings must be used.');
       }
     }
 
